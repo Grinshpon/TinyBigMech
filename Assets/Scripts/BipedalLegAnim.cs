@@ -19,8 +19,8 @@ public class BipedalLegAnim : MonoBehaviour
   public float epsilon = 0.01f;
   public LayerMask groundLayer;
 
-  bool leftMoving = false;
-  bool rightMoving = false;
+  public bool leftMoving = false;
+  public bool rightMoving = false;
 
   Vector3 leftOrigin;
   Vector3 rightOrigin;
@@ -36,22 +36,25 @@ public class BipedalLegAnim : MonoBehaviour
   void Update()
   {
     Vector3 root = mech.position;
-    if(!leftMoving)
+    if(!leftMoving && !rightMoving)
     {
-      if (Physics.Raycast(root+leftOrigin, -Vector3.up, out RaycastHit info, 10, groundLayer))
+      if (Physics.Raycast(mech.TransformPoint(leftOrigin), -Vector3.up, out RaycastHit info, 10, groundLayer))
       {
         leftLookahead.position = info.point + new Vector3(0f,heightFromGround,0f);
       }
       leftMoving = HandlePos(leftFoot, leftLookahead, LeftPlaced);
     }
-    if(!rightMoving)
+    if(!rightMoving && !leftMoving)
     {
-      if (Physics.Raycast(root+rightOrigin, -Vector3.up, out RaycastHit info, 10, groundLayer))
+      if (Physics.Raycast(mech.TransformPoint(rightOrigin), -Vector3.up, out RaycastHit info, 10, groundLayer))
       {
         rightLookahead.position = info.point + new Vector3(0f,heightFromGround,0f);
       }
       rightMoving = HandlePos(rightFoot, rightLookahead, RightPlaced);
     }
+
+    root.y = (leftFoot.position.y + rightFoot.position.y - heightFromGround) / 2f;
+    mech.position = root;
   }
 
   bool HandlePos(Transform foot, Transform lookahead, Action callback)
@@ -84,15 +87,19 @@ public class BipedalLegAnim : MonoBehaviour
     float dist = Vector3.Distance(footPos, laPos);
     float t = 0f;
     while(dist > epsilon) {
+      //Debug.Log("------------------------------");
+      //Debug.Log(dist);
       t = Mathf.Clamp(t+Time.deltaTime * speed, 0f, R); //todo: set speed according to mech's speed
-      float lerp = Mathf.Sin(t);
-      float r = Vector3.Distance(prevFootPos, laPos);
+      float lerp = Mathf.Clamp01(Mathf.Sin(t));
+      //float r = Vector3.Distance(prevFootPos, laPos);
       footPos = Vector3.Lerp(prevFootPos, laPos, lerp);
       footPos.y += Mathf.Sin(lerp*Mathf.PI) * stepHeight;
       foot.position = footPos;
 
       yield return null;
-      laPos = lookahead.position;
+      //laPos = lookahead.position;
+      laPos += (lookahead.position - laPos) * 0.25f * Mathf.Clamp(Time.deltaTime,0f,0.3f);
+      //laPos = Vector3.Lerp(laPos, lookahead.position, 0.01f);//Time.deltaTime);
       dist = Vector3.Distance(footPos, laPos);
     }
 
